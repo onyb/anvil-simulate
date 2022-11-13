@@ -20,8 +20,8 @@ const tokenRegistry = [
     decimals: 6
   },
   {
-    contractAddress: '0x0D8775F648430679A709E98d2b0Cb6250d2887EF',
-    symbol: 'BAT',
+    contractAddress: '0x6b175474e89094c44da98b954eedeac495271d0f',
+    symbol: 'DAI',
     decimals: 18
   }
 ]
@@ -50,6 +50,8 @@ app.post('/', async (req, res) => {
       }
     }
   ])
+
+  const { result: ethBalanceBefore } = await cast('eth_getBalance', [from, 'latest'])
 
   const balanceRegistryBefore = []
   for (const token of tokenRegistry) {
@@ -89,6 +91,8 @@ app.post('/', async (req, res) => {
     balanceRegistryAfter.push({ ...token, after: result })
   }
 
+  const { result: ethBalanceAfter } = await cast('eth_getBalance', [from, 'latest'])
+
   const balanceDiff = balanceRegistryAfter
     .map(token => ({
       symbol: token.symbol,
@@ -100,14 +104,16 @@ app.post('/', async (req, res) => {
     .concat([
       {
         symbol: 'ETH',
-        diff: new BigNumber(value)
-          .negated()
+        diff: new BigNumber(ethBalanceAfter)
+          .minus(ethBalanceBefore)
           .div(10 ** 18)
           .toFixed()
       }
     ])
 
-  res.send(balanceDiff.filter(each => each.diff !== '0'))
+  res.send({
+    simulation: balanceDiff.filter(each => each.diff !== '0')
+  })
 })
 
 app.listen(port, () => {
